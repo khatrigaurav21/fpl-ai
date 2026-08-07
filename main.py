@@ -25,7 +25,7 @@ LOG_PATH = Path("predictions_log.csv")
 def already_logged(gw: int) -> bool:
     if not LOG_PATH.exists():
         return False
-    with LOG_PATH.open(newline="") as f:
+    with LOG_PATH.open(newline="", encoding="utf-8") as f:
         return any(row["gameweek"] == str(gw) for row in csv.DictReader(f))
 
 
@@ -41,7 +41,7 @@ def log_prediction(gw: int, captain: dict, vice: dict) -> bool:
     if already_logged(gw):
         return False
     is_new = not LOG_PATH.exists()
-    with LOG_PATH.open("a", newline="") as f:
+    with LOG_PATH.open("a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if is_new:
             writer.writerow(
