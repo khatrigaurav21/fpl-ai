@@ -1,0 +1,40 @@
+name: FPL Captain Pick
+
+on:
+  schedule:
+    - cron: "0 8,20 * * *" # 08:00 and 20:00 UTC daily; adjust to your usual deadline times
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Run captaincy picker
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          FPL_TEAM_ID: ${{ secrets.FPL_TEAM_ID }}
+        run: |
+          ARGS="--notify --deadline-window-hours 36"
+          if [ -n "$FPL_TEAM_ID" ]; then
+            ARGS="$ARGS --team-id $FPL_TEAM_ID"
+          fi
+          python main.py $ARGS
+
+      - name: Commit updated log
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add predictions_log.csv
+          git diff --cached --quiet || git commit -m "Log GW prediction"
+          git diff --cached --quiet || git push

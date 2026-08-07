@@ -9,6 +9,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from captaincy import pick_captain_vice, rank_candidates
 from fpl_client import get_bootstrap_static, get_entry_picks, get_fixtures
+from notify import send_ntfy
 from xp_model import expected_points, minutes_probability
 
 LOG_PATH = Path("predictions_log.csv")
@@ -20,6 +21,19 @@ def get_next_event(events: list[dict]) -> dict:
 
 def get_current_event(events: list[dict]) -> dict | None:
     return next((e for e in events if e["is_current"]), None)
+
+
+def hours_until_deadline(deadline_time: str) -> float:
+    deadline = dt.datetime.fromisoformat(deadline_time.replace("Z", "+00:00"))
+    now = dt.datetime.now(dt.timezone.utc)
+    return (deadline - now).total_seconds() / 3600
+
+
+def already_logged(gw: int) -> bool:
+    if not LOG_PATH.exists():
+        return False
+    with LOG_PATH.open(newline="") as f:
+        return any(row["gameweek"] == str(gw) for row in csv.DictReader(f))
 
 
 def get_squad_ids(team_id: int, events: list[dict]) -> set[int] | None:
@@ -60,7 +74,9 @@ def build_player_pool(data: dict, gw_fixtures: list[dict], squad_ids: set[int] |
     return pool
 
 
-def log_prediction(gw: int, captain: dict, vice: dict) -> None:
+def log_prediction(gw: int, captain: dict, vice: dict) -> bool:
+    if already_logged(gw):
+        return False
     is_new = not LOG_PATH.exists()
     with LOG_PATH.open("a", newline="") as f:
         writer = csv.writer(f)
@@ -69,16 +85,31 @@ def log_prediction(gw: int, captain: dict, vice: dict) -> None:
                 ["date_logged", "gameweek", "captain", "captain_xp", "vice", "vice_xp", "actual_captain_points"]
             )
         writer.writerow([dt.date.today().isoformat(), gw, captain["name"], captain["xp"], vice["name"], vice["xp"], ""])
+    return True
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Next-gameweek xP and captaincy recommendation.")
     parser.add_argument("--team-id", type=int, default=None, help="Your FPL team/entry ID, to rank only your squad.")
     parser.add_argument("--top-n", type=int, default=10, help="How many candidates to show.")
+    parser.add_argument("--notify", action="store_true", help="Send a push notification via ntfy.sh (requires NTFY_TOPIC env var).")
+    parser.add_argument(
+        "--deadline-window-hours",
+        type=float,
+        default=None,
+        help="Only proceed if the next deadline is within this many hours. Meant for scheduled/cron runs.",
+    )
     args = parser.parse_args()
 
     data = get_bootstrap_static()
     next_gw = get_next_event(data["events"])
+
+    if args.deadline_window_hours is not None:
+        hours_left = hours_until_deadline(next_gw["deadline_time"])
+        if not (0 <= hours_left <= args.deadline_window_hours):
+            print(f"GW{next_gw['id']} deadline is {hours_left:.1f}h away; outside the {args.deadline_window_hours}h window. Skipping.")
+            return
+
     fixtures = get_fixtures(event=next_gw["id"])
 
     squad_ids = get_squad_ids(args.team_id, data["events"]) if args.team_id else None
@@ -99,8 +130,17 @@ def main() -> None:
     print(f"\nCaptain: {captain['name']} (xP={captain['xp']})")
     print(f"Vice:    {vice['name']} (xP={vice['xp']})")
 
-    log_prediction(next_gw["id"], captain, vice)
+    logged = log_prediction(next_gw["id"], captain, vice)
+    if not logged:
+        print(f"\nAlready logged a prediction for GW{next_gw['id']}; skipping duplicate log/notification.")
+        return
+
     print(f"\nLogged prediction to {LOG_PATH.resolve()}")
+
+    if args.notify:
+        message = f"Captain: {captain['name']} (xP={captain['xp']})\nVice: {vice['name']} (xP={vice['xp']})"
+        if send_ntfy(message, title=f"FPL GW{next_gw['id']} Captain Pick"):
+            print("Notification sent.")
 
 
 if __name__ == "__main__":
