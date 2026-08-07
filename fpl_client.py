@@ -28,6 +28,12 @@ def get_entry_picks(team_id: int, event: int) -> dict:
     return resp.json()
 
 
+def get_entry_history(team_id: int) -> dict:
+    resp = requests.get(f"{BASE_URL}/entry/{team_id}/history/", timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+
 def get_next_event(events: list[dict]) -> dict:
     return next(e for e in events if e["is_next"])
 

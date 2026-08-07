@@ -31,10 +31,19 @@ jobs:
           fi
           python main.py $ARGS
 
-      - name: Commit updated log
+      - name: Run transfer suggester
+        if: ${{ secrets.FPL_TEAM_ID != '' }}
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          FPL_TEAM_ID: ${{ secrets.FPL_TEAM_ID }}
+        run: python transfers.py --team-id "$FPL_TEAM_ID" --notify --deadline-window-hours 36
+
+      - name: Commit updated logs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add predictions_log.csv
-          git diff --cached --quiet || git commit -m "Log GW prediction"
+          for f in predictions_log.csv transfer_suggestions_log.csv; do
+            [ -f "$f" ] && git add "$f"
+          done
+          git diff --cached --quiet || git commit -m "Log GW prediction and transfer suggestions"
           git diff --cached --quiet || git push
