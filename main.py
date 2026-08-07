@@ -8,25 +8,17 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 from captaincy import pick_captain_vice, rank_candidates, top_by_position
-from fpl_client import get_bootstrap_static, get_entry_picks, get_fixtures
+from fpl_client import (
+    build_player_pool,
+    get_bootstrap_static,
+    get_entry_snapshot,
+    get_fixtures,
+    get_next_event,
+    hours_until_deadline,
+)
 from notify import send_ntfy
-from xp_model import expected_points, minutes_probability
 
 LOG_PATH = Path("predictions_log.csv")
-
-
-def get_next_event(events: list[dict]) -> dict:
-    return next(e for e in events if e["is_next"])
-
-
-def get_current_event(events: list[dict]) -> dict | None:
-    return next((e for e in events if e["is_current"]), None)
-
-
-def hours_until_deadline(deadline_time: str) -> float:
-    deadline = dt.datetime.fromisoformat(deadline_time.replace("Z", "+00:00"))
-    now = dt.datetime.now(dt.timezone.utc)
-    return (deadline - now).total_seconds() / 3600
 
 
 def already_logged(gw: int) -> bool:
@@ -37,41 +29,11 @@ def already_logged(gw: int) -> bool:
 
 
 def get_squad_ids(team_id: int, events: list[dict]) -> set[int] | None:
-    next_event = get_next_event(events)
-    for event_id in (next_event["id"], get_current_event(events) and get_current_event(events)["id"]):
-        if event_id is None:
-            continue
-        try:
-            picks = get_entry_picks(team_id, event_id)
-            return {p["element"] for p in picks["picks"]}
-        except Exception:
-            continue
-    print(f"Warning: could not fetch squad for team {team_id}; using full player pool.")
-    return None
-
-
-def build_player_pool(data: dict, gw_fixtures: list[dict], squad_ids: set[int] | None) -> list[dict]:
-    elements = data["elements"]
-    teams = {t["id"]: t["name"] for t in data["teams"]}
-    positions = {p["id"]: p["singular_name_short"] for p in data["element_types"]}
-
-    pool = []
-    for p in elements:
-        if p["status"] == "u":  # left the league / not returning
-            continue
-        if squad_ids is not None and p["id"] not in squad_ids:
-            continue
-        pool.append(
-            {
-                "id": p["id"],
-                "name": f"{p['first_name']} {p['second_name']}",
-                "team": teams[p["team"]],
-                "position": positions[p["element_type"]],
-                "xp": round(expected_points(p, gw_fixtures), 2),
-                "minutes_probability": minutes_probability(p),
-            }
-        )
-    return pool
+    snapshot = get_entry_snapshot(team_id, events)
+    if snapshot is None:
+        print(f"Warning: could not fetch squad for team {team_id}; using full player pool.")
+        return None
+    return {p["element"] for p in snapshot["picks"]}
 
 
 def log_prediction(gw: int, captain: dict, vice: dict) -> bool:
