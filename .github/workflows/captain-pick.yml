@@ -11,6 +11,9 @@ permissions:
 jobs:
   pick:
     runs-on: ubuntu-latest
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      FPL_TEAM_ID: ${{ secrets.FPL_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,9 +24,6 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Run captaincy picker
-        env:
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          FPL_TEAM_ID: ${{ secrets.FPL_TEAM_ID }}
         run: |
           ARGS="--notify --deadline-window-hours 36"
           if [ -n "$FPL_TEAM_ID" ]; then
@@ -32,10 +32,7 @@ jobs:
           python main.py $ARGS
 
       - name: Run transfer suggester
-        if: ${{ secrets.FPL_TEAM_ID != '' }}
-        env:
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          FPL_TEAM_ID: ${{ secrets.FPL_TEAM_ID }}
+        if: ${{ env.FPL_TEAM_ID != '' }}
         run: python transfers.py --team-id "$FPL_TEAM_ID" --notify --deadline-window-hours 36
 
       - name: Commit updated logs
