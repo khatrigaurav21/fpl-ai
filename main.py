@@ -16,6 +16,7 @@ from fpl_client import (
     get_next_event,
     hours_until_deadline,
 )
+from manual_squad import load_manual_squad
 from notify import send_ntfy
 
 LOG_PATH = Path("predictions_log.csv")
@@ -53,6 +54,12 @@ def log_prediction(gw: int, captain: dict, vice: dict) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Next-gameweek xP and captaincy recommendation.")
     parser.add_argument("--team-id", type=int, default=None, help="Your FPL team/entry ID, to rank only your squad.")
+    parser.add_argument(
+        "--squad-file",
+        type=str,
+        default=None,
+        help="Path to a manual squad JSON file, used instead of --team-id (e.g. before the GW deadline passes and picks aren't fetchable yet).",
+    )
     parser.add_argument("--per-position", type=int, default=3, help="How many top players to show per position (GKP/DEF/MID/FWD).")
     parser.add_argument("--notify", action="store_true", help="Send a push notification via ntfy.sh (requires NTFY_TOPIC env var).")
     parser.add_argument(
@@ -74,7 +81,14 @@ def main() -> None:
 
     fixtures = get_fixtures(event=next_gw["id"])
 
-    squad_ids = get_squad_ids(args.team_id, data["events"]) if args.team_id else None
+    if args.squad_file:
+        full_pool = build_player_pool(data, fixtures)
+        squad, _bank = load_manual_squad(args.squad_file, full_pool)
+        squad_ids = {p["id"] for p in squad}
+    elif args.team_id:
+        squad_ids = get_squad_ids(args.team_id, data["events"])
+    else:
+        squad_ids = None
 
     pool = build_player_pool(data, fixtures, squad_ids)
     if not pool:

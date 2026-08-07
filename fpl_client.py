@@ -78,6 +78,7 @@ def build_player_pool(data: dict, gw_fixtures: list[dict], squad_ids: set[int] |
             {
                 "id": p["id"],
                 "name": f"{p['first_name']} {p['second_name']}",
+                "web_name": p["web_name"],
                 "team": teams[p["team"]],
                 "position": positions[p["element_type"]],
                 "now_cost": p["now_cost"],

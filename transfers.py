@@ -16,6 +16,7 @@ from fpl_client import (
     get_next_event,
     hours_until_deadline,
 )
+from manual_squad import load_manual_squad
 from notify import send_ntfy
 
 MAX_PER_CLUB = 3
@@ -171,7 +172,13 @@ def format_transfer(c: dict) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Budget-aware transfer suggestions for the next gameweek.")
-    parser.add_argument("--team-id", type=int, required=True, help="Your FPL team/entry ID.")
+    parser.add_argument("--team-id", type=int, default=None, help="Your FPL team/entry ID. Also used to auto-compute free transfers even when --squad-file is given.")
+    parser.add_argument(
+        "--squad-file",
+        type=str,
+        default=None,
+        help="Path to a manual squad JSON file, used instead of fetching your squad from the API (e.g. before the GW deadline passes).",
+    )
     parser.add_argument(
         "--free-transfers",
         type=int,
@@ -188,6 +195,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if not args.team_id and not args.squad_file:
+        parser.error("Provide either --team-id or --squad-file.")
+    if args.squad_file is None and args.free_transfers is None and args.team_id is None:
+        parser.error("--free-transfers is required when using --squad-file without --team-id.")
+
     data = get_bootstrap_static()
     next_gw = get_next_event(data["events"])
 
@@ -198,22 +210,25 @@ def main() -> None:
             return
 
     fixtures = get_fixtures(event=next_gw["id"])
+    full_pool = build_player_pool(data, fixtures)
+    pool_by_id = {p["id"]: p for p in full_pool}
 
-    snapshot = get_entry_snapshot(args.team_id, data["events"])
-    if snapshot is None:
-        print(f"Could not fetch squad/finances for team {args.team_id}. Squad may not be locked in yet for this gameweek.")
-        return
+    if args.squad_file:
+        squad, bank = load_manual_squad(args.squad_file, full_pool)
+        print(f"Loaded squad from {args.squad_file} (bank/selling prices are approximate).")
+    else:
+        snapshot = get_entry_snapshot(args.team_id, data["events"])
+        if snapshot is None:
+            print(f"Could not fetch squad/finances for team {args.team_id}. Squad may not be locked in yet for this gameweek.")
+            return
+        bank = snapshot["entry_history"]["bank"]
+        squad = build_squad(pool_by_id, snapshot["picks"])
 
     free_transfers = args.free_transfers
     if free_transfers is None:
         history = get_entry_history(args.team_id)
         free_transfers = compute_free_transfers(history)
         print(f"Auto-computed free transfers: {free_transfers} (pass --free-transfers to override)")
-
-    bank = snapshot["entry_history"]["bank"]
-    full_pool = build_player_pool(data, fixtures)
-    pool_by_id = {p["id"]: p for p in full_pool}
-    squad = build_squad(pool_by_id, snapshot["picks"])
 
     suggestions, remaining_bank = suggest_transfers(squad, full_pool, bank, free_transfers, args.max_suggestions)
 
