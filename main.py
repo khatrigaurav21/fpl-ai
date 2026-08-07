@@ -7,7 +7,7 @@ from pathlib import Path
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-from captaincy import pick_captain_vice, rank_candidates
+from captaincy import pick_captain_vice, rank_candidates, top_by_position
 from fpl_client import get_bootstrap_static, get_entry_picks, get_fixtures
 from notify import send_ntfy
 from xp_model import expected_points, minutes_probability
@@ -91,7 +91,7 @@ def log_prediction(gw: int, captain: dict, vice: dict) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Next-gameweek xP and captaincy recommendation.")
     parser.add_argument("--team-id", type=int, default=None, help="Your FPL team/entry ID, to rank only your squad.")
-    parser.add_argument("--top-n", type=int, default=10, help="How many candidates to show.")
+    parser.add_argument("--per-position", type=int, default=3, help="How many top players to show per position (GKP/DEF/MID/FWD).")
     parser.add_argument("--notify", action="store_true", help="Send a push notification via ntfy.sh (requires NTFY_TOPIC env var).")
     parser.add_argument(
         "--deadline-window-hours",
@@ -119,13 +119,16 @@ def main() -> None:
         print("No players found for this gameweek (blank gameweek for your squad, or bad team ID).")
         return
 
-    ranked = rank_candidates(pool, top_n=args.top_n)
-    captain, vice = pick_captain_vice(ranked)
+    full_ranking = rank_candidates(pool, top_n=len(pool))
+    captain, vice = pick_captain_vice(full_ranking)
+    by_position = top_by_position(pool, n=args.per_position)
 
     print(f"Gameweek {next_gw['id']} — {next_gw['name']}\n")
-    print("Top candidates:")
-    for p in ranked:
-        print(f"  {p['name']:<25} {p['team']:<15} {p['position']:<4} xP={p['xp']:>5.2f}  minutes={p['minutes_probability']:.0%}")
+    print("Top picks by position:")
+    for pos, players in by_position.items():
+        print(f"\n{pos}")
+        for p in players:
+            print(f"  {p['name']:<25} {p['team']:<15} xP={p['xp']:>5.2f}  minutes={p['minutes_probability']:.0%}")
 
     print(f"\nCaptain: {captain['name']} (xP={captain['xp']})")
     print(f"Vice:    {vice['name']} (xP={vice['xp']})")
@@ -138,8 +141,12 @@ def main() -> None:
     print(f"\nLogged prediction to {LOG_PATH.resolve()}")
 
     if args.notify:
-        message = f"Captain: {captain['name']} (xP={captain['xp']})\nVice: {vice['name']} (xP={vice['xp']})"
-        if send_ntfy(message, title=f"FPL GW{next_gw['id']} Captain Pick"):
+        lines = [f"Captain: {captain['name']} ({captain['xp']})", f"Vice: {vice['name']} ({vice['xp']})", ""]
+        for pos, players in by_position.items():
+            picks = ", ".join(f"{p['name']} ({p['xp']})" for p in players)
+            lines.append(f"{pos}: {picks}")
+        message = "\n".join(lines)
+        if send_ntfy(message, title=f"FPL GW{next_gw['id']} Top Picks"):
             print("Notification sent.")
 
 
