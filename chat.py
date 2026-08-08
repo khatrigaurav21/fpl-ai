@@ -21,7 +21,7 @@ SYSTEM_PROMPT = (
     "and projected points from the context."
 )
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-flash-latest"
 
 
 def ask(question: str, docs: list[dict], gw: int, client, model: str) -> str:
