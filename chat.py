@@ -21,36 +21,37 @@ SYSTEM_PROMPT = (
     "and projected points from the context."
 )
 
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 
 def ask(question: str, docs: list[dict], gw: int, client, model: str) -> str:
+    from google.genai import types
+
     relevant = retrieve(question, docs)
     context = "\n\n".join(d["text"] for d in relevant)
 
-    message = client.messages.create(
+    response = client.models.generate_content(
         model=model,
-        max_tokens=500,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": f"Context (Gameweek {gw}):\n{context}\n\nQuestion: {question}"}],
+        contents=f"Context (Gameweek {gw}):\n{context}\n\nQuestion: {question}",
+        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, max_output_tokens=500),
     )
-    return message.content[0].text
+    return response.text
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ask natural-language questions about your FPL data (RAG over this project's own computed data).")
     parser.add_argument("question", nargs="*", help="Your question. If omitted, starts an interactive prompt.")
-    parser.add_argument("--model", type=str, default=os.environ.get("ANTHROPIC_MODEL", DEFAULT_MODEL), help="Anthropic model to use.")
+    parser.add_argument("--model", type=str, default=os.environ.get("GEMINI_MODEL", DEFAULT_MODEL), help="Gemini model to use.")
     args = parser.parse_args()
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("ANTHROPIC_API_KEY is not set. Get a key from console.anthropic.com and set it as an environment variable (or in a local .env file, see .env.example).")
+        print("GEMINI_API_KEY is not set. Get a free key from aistudio.google.com/apikey and set it as an environment variable (or in a local .env file, see .env.example).")
         return
 
-    from anthropic import Anthropic
+    from google import genai
 
-    client = Anthropic(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
     print("Loading this gameweek's data...")
     docs, gw = build_knowledge_base()

@@ -14,7 +14,7 @@ All free data — the unauthenticated FPL API only, no scraping, no paid feeds.
 - **`transfers.py`** — budget-aware transfer suggestions (up to 3), respecting your bank, the 3-per-club limit, and squad composition. Free transfers are auto-computed from your transfer history; hits are only suggested when a specific swap's own xP gain outweighs the -4.
 - **`team_optimizer.py`** — the single best possible 15-man squad under a budget, solved exactly via MILP (PuLP/CBC), including the optimal captain choice as part of the objective, not picked after the fact.
 - **`price_tracker.py`** — heuristic price-change momentum (net transfers scaled by ownership), since FPL's real algorithm is undisclosed.
-- **`chat.py`** — a small RAG assistant: ask natural-language questions and get answers grounded in this project's own computed data (not general football knowledge). Keyword-based retrieval for now; real embeddings are the natural next step. Requires your own `ANTHROPIC_API_KEY`.
+- **`chat.py`** — a small RAG assistant: ask natural-language questions and get answers grounded in this project's own computed data (not general football knowledge). Keyword-based retrieval for now; real embeddings are the natural next step. Uses Gemini (free tier) — requires your own `GEMINI_API_KEY` from aistudio.google.com/apikey.
 - **GitHub Actions** (`.github/workflows/captain-pick.yml`) — runs the captain pick and transfer suggester daily, only acting within 36 hours of a deadline, pushing results to your phone via ntfy.
 
 ## Setup
@@ -25,7 +25,7 @@ source .venv/Scripts/activate  # or .venv/bin/activate on Linux/Mac
 pip install -r requirements.txt
 ```
 
-For `chat.py`, copy `.env.example` to `.env` and add your own key from console.anthropic.com.
+For `chat.py`, copy `.env.example` to `.env` and add your own free key from aistudio.google.com/apikey.
 
 ## Usage
 
