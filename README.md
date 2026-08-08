@@ -14,7 +14,7 @@ All free data — the unauthenticated FPL API only, no scraping, no paid feeds.
 - **`transfers.py`** — budget-aware transfer suggestions (up to 3), respecting your bank, the 3-per-club limit, and squad composition. Free transfers are auto-computed from your transfer history; hits are only suggested when a specific swap's own xP gain outweighs the -4.
 - **`team_optimizer.py`** — the single best possible 15-man squad under a budget, solved exactly via MILP (PuLP/CBC), including the optimal captain choice as part of the objective, not picked after the fact.
 - **`price_tracker.py`** — heuristic price-change momentum (net transfers scaled by ownership), since FPL's real algorithm is undisclosed.
-- **`chat.py`** — a small RAG assistant: ask natural-language questions and get answers grounded in this project's own computed data (not general football knowledge). Keyword-based retrieval for now; real embeddings are the natural next step. Uses Gemini (free tier) — requires your own `GEMINI_API_KEY` from aistudio.google.com/apikey.
+- **`chat.py`** / **`chat_ui.py`** — a small RAG assistant: ask natural-language questions and get answers grounded in this project's own computed data (not general football knowledge). Keyword-based retrieval for now; real embeddings are the natural next step. Uses Gemini (free tier) — requires your own `GEMINI_API_KEY` from aistudio.google.com/apikey. `chat.py` is the CLI; `chat_ui.py` runs the same thing as a real chat interface in your browser (Gradio).
 - **GitHub Actions** (`.github/workflows/captain-pick.yml`) — runs the captain pick and transfer suggester daily, only acting within 36 hours of a deadline, pushing results to your phone via ntfy.
 
 ## Setup
@@ -34,7 +34,8 @@ python main.py --team-id <your-id>              # captain pick + top picks by po
 python transfers.py --team-id <your-id>          # transfer suggestions
 python team_optimizer.py                          # optimal squad from scratch, any budget
 python price_tracker.py                           # price-change momentum
-python chat.py "who should I captain this week"   # ask anything
+python chat.py "who should I captain this week"   # ask anything (CLI)
+python chat_ui.py                                 # same thing, in a browser chat UI
 ```
 
 Your team ID is the number in the URL when you view your team on the FPL site (`.../entry/<id>/...`).
