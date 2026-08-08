@@ -2,7 +2,7 @@ name: FPL Captain Pick
 
 on:
   schedule:
-    - cron: "0 8,20 * * *" # 08:00 and 20:00 UTC daily; adjust to your usual deadline times
+    - cron: "0 8 * * *" # 08:00 UTC daily; adjust to whatever time suits you
   workflow_dispatch: {}
 
 permissions:
