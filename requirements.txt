@@ -1,2 +1,4 @@
 requests>=2.31
 pulp>=2.8
+anthropic>=0.121
+python-dotenv>=1.0
