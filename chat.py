@@ -33,8 +33,13 @@ def ask(question: str, docs: list[dict], gw: int, client, model: str) -> str:
     response = client.models.generate_content(
         model=model,
         contents=f"Context (Gameweek {gw}):\n{context}\n\nQuestion: {question}",
-        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, max_output_tokens=500),
+        # This model's "thinking" tokens count against max_output_tokens, and can
+        # run to 1000+ tokens before any visible answer is produced -- a low
+        # budget here truncates the real answer, not just the thinking.
+        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, max_output_tokens=2048),
     )
+    if response.candidates[0].finish_reason.name == "MAX_TOKENS" and not response.text:
+        return "(Response was cut off by the token budget before any answer was produced. Try a shorter question.)"
     return response.text
 
 
