@@ -33,10 +33,16 @@ def ask(question: str, docs: list[dict], gw: int, client, model: str) -> str:
     response = client.models.generate_content(
         model=model,
         contents=f"Context (Gameweek {gw}):\n{context}\n\nQuestion: {question}",
-        # This model's "thinking" tokens count against max_output_tokens, and can
-        # run to 1000+ tokens before any visible answer is produced -- a low
-        # budget here truncates the real answer, not just the thinking.
-        config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, max_output_tokens=2048),
+        # This model's "thinking" tokens count against max_output_tokens and scale
+        # with question complexity -- ~1100 for a single-position lookup, ~2500+
+        # for a full starting-XI question. thinking_budget biases it toward less
+        # (not a hard cap in practice), and max_output_tokens is the real backstop
+        # sized well above the worst case observed during testing.
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            max_output_tokens=4096,
+            thinking_config=types.ThinkingConfig(thinking_budget=1024),
+        ),
     )
     if response.candidates[0].finish_reason.name == "MAX_TOKENS" and not response.text:
         return "(Response was cut off by the token budget before any answer was produced. Try a shorter question.)"
