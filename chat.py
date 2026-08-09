@@ -21,7 +21,14 @@ SYSTEM_PROMPT = (
     "and projected points from the context."
 )
 
-DEFAULT_MODEL = "gemini-flash-latest"
+# Free-tier quota varies wildly by model and isn't documented anywhere obvious --
+# gemini-flash-latest resolved to gemini-3.6-flash, which turned out to have a
+# 20-requests/day free cap. The "-lite" tier of the same generation has a much
+# higher quota and, as a bonus, doesn't seem to use "thinking" tokens for
+# straightforward lookups like this, so it's less prone to the truncation
+# issue too. If this changes again, check the actual model name in any 429
+# error message -- it's often not the one you asked for.
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
 
 
 def ask(question: str, docs: list[dict], gw: int, client, model: str) -> str:
