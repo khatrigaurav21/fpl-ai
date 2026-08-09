@@ -25,27 +25,32 @@ def _resolve(raw_name: str, full_pool: list[dict], index: dict[str, list[dict]])
     return next(iter(unique.values()))
 
 
-def load_manual_squad(path: str, full_pool: list[dict]) -> tuple[list[dict], int]:
-    """Loads a squad from a JSON file ({"bank": <tenths of £1m>, "players": [names...]})
-    for use before the FPL API exposes real picks (i.e. before the gameweek deadline
-    passes). selling_price is approximated as now_cost since real sell price only
-    diverges after price rises -- fine right after a squad is first set, less accurate
-    later in the season."""
-    with open(path, encoding="utf-8") as f:
-        config = json.load(f)
-
+def resolve_players(names: list[str], full_pool: list[dict]) -> list[dict]:
+    """Matches a list of player names (web_name, full name, or unambiguous
+    substring) against the live player pool. selling_price is approximated as
+    now_cost since real sell price only diverges after price rises -- fine
+    right after a squad is first set, less accurate later in the season."""
     index = _build_name_index(full_pool)
     squad = []
     seen_ids = set()
-    for raw_name in config["players"]:
+    for raw_name in names:
         player = dict(_resolve(raw_name, full_pool, index))
         if player["id"] in seen_ids:
-            raise ValueError(f"Duplicate player in squad file: {raw_name}")
+            raise ValueError(f"Duplicate player in squad: {raw_name}")
         seen_ids.add(player["id"])
         player["selling_price"] = player["now_cost"]
         squad.append(player)
 
     if len(squad) != 15:
-        raise ValueError(f"Squad file must list exactly 15 players (got {len(squad)}).")
+        raise ValueError(f"Squad must list exactly 15 players (got {len(squad)}).")
 
-    return squad, config["bank"]
+    return squad
+
+
+def load_manual_squad(path: str, full_pool: list[dict]) -> tuple[list[dict], int]:
+    """Loads a squad from a JSON file ({"bank": <tenths of £1m>, "players": [names...]})
+    for use before the FPL API exposes real picks (i.e. before the gameweek deadline
+    passes)."""
+    with open(path, encoding="utf-8") as f:
+        config = json.load(f)
+    return resolve_players(config["players"], full_pool), config["bank"]

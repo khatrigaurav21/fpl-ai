@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FPL AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">FPL</div>
+        <div class="brand-name">FPL <span>AI</span></div>
+      </div>
+
+      <div class="nav-group">
+        <button class="nav-item active" data-panel="captain">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 6.6L21 10l-5.5 4.3L17 21l-5-3.6L7 21l1.5-6.7L3 10l6.6-1.4L12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span>Captain Pick</span>
+        </button>
+        <button class="nav-item" data-panel="transfers">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M7 3L3 7l4 4M3 7h13M17 21l4-4-4-4M21 17H8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Transfers</span>
+        </button>
+        <button class="nav-item" data-panel="optimizer">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 21V9M4 9a3 3 0 100-6 3 3 0 000 6zM12 21v-6M12 15a3 3 0 100-6 3 3 0 000 6zM20 21V13M20 13a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span>Team Optimizer</span>
+        </button>
+        <button class="nav-item" data-panel="prices">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8M21 7v6M21 7h-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Price Tracker</span>
+        </button>
+        <button class="nav-item" data-panel="horizon">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 3v18h18M7 15l4-5 3 3 5-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Horizon Planner</span>
+          <span class="badge-exp">EXP</span>
+        </button>
+        <button class="nav-item" data-panel="chat">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M21 12a8 8 0 11-3.5-6.6L21 4l-1 4.5A8 8 0 0121 12z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span>Ask AI</span>
+        </button>
+      </div>
+
+      <div class="sidebar-footer">
+        <span id="gw-indicator">GW —</span>
+      </div>
+    </nav>
+
+    <main class="content">
+      <!-- Captain Pick -->
+      <section class="panel active" id="panel-captain">
+        <header class="panel-header">
+          <h1>Captain Pick</h1>
+          <p>Next-gameweek expected points, captaincy, and top picks by position.</p>
+        </header>
+        <div class="squad-input" data-target="captain"></div>
+        <button class="btn-primary" id="run-captain">Get Recommendation</button>
+        <div class="results" id="results-captain"></div>
+      </section>
+
+      <!-- Transfers -->
+      <section class="panel" id="panel-transfers">
+        <header class="panel-header">
+          <h1>Transfer Suggestions</h1>
+          <p>Budget-aware, hit-cost-aware, up to 3 swaps.</p>
+        </header>
+        <div class="squad-input" data-target="transfers" data-require-squad="true"></div>
+        <div class="field-row">
+          <label>Free transfers <span class="hint">(leave blank to auto-compute from team ID)</span></label>
+          <input type="number" id="transfers-ft" min="0" max="5" placeholder="auto" />
+        </div>
+        <button class="btn-primary" id="run-transfers">Get Suggestions</button>
+        <div class="results" id="results-transfers"></div>
+      </section>
+
+      <!-- Team Optimizer -->
+      <section class="panel" id="panel-optimizer">
+        <header class="panel-header">
+          <h1>Team Optimizer</h1>
+          <p>The single best possible 15-man squad under budget, solved exactly.</p>
+        </header>
+        <div class="field-row">
+          <label>Budget (£m)</label>
+          <input type="number" id="optimizer-budget" value="100.0" step="0.1" />
+        </div>
+        <button class="btn-primary" id="run-optimizer">Optimize</button>
+        <div class="results" id="results-optimizer"></div>
+      </section>
+
+      <!-- Price Tracker -->
+      <section class="panel" id="panel-prices">
+        <header class="panel-header">
+          <h1>Price Tracker</h1>
+          <p>Heuristic price-change momentum &mdash; not FPL's real algorithm.</p>
+        </header>
+        <button class="btn-primary" id="run-prices">Check Momentum</button>
+        <div class="results" id="results-prices"></div>
+      </section>
+
+      <!-- Horizon Planner -->
+      <section class="panel" id="panel-horizon">
+        <header class="panel-header">
+          <h1>Horizon Planner <span class="badge-exp large">EXPERIMENTAL</span></h1>
+          <p>Multi-week transfer planning. The single-week model this compounds has never been checked against a real result &mdash; treat this as a technical exercise, not a plan to follow.</p>
+        </header>
+        <div class="squad-input" data-target="horizon"></div>
+        <div class="field-row">
+          <label>Free transfers <span class="hint">(leave blank to auto-compute)</span></label>
+          <input type="number" id="horizon-ft" min="0" max="5" placeholder="auto" />
+        </div>
+        <div class="field-row">
+          <label>Horizon (weeks)</label>
+          <input type="number" id="horizon-weeks" value="3" min="1" max="5" />
+        </div>
+        <button class="btn-primary" id="run-horizon">Plan Horizon</button>
+        <div class="results" id="results-horizon"></div>
+      </section>
+
+      <!-- Chat -->
+      <section class="panel" id="panel-chat">
+        <header class="panel-header">
+          <h1>Ask AI</h1>
+          <p>Grounded only in this project's own computed data.</p>
+        </header>
+        <div class="chat-window" id="chat-window">
+          <div class="chat-examples">
+            <button class="chip">Who should I captain this week?</button>
+            <button class="chip">Best defenders under £6m</button>
+            <button class="chip">Is Haaland worth it?</button>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Ask about this gameweek..." />
+          <button class="btn-primary" id="chat-send">Send</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="squad-input-template">
+    <div class="squad-toggle">
+      <button class="toggle-btn active" data-mode="team-id">Team ID</button>
+      <button class="toggle-btn" data-mode="players">Paste Squad</button>
+    </div>
+    <div class="squad-mode squad-mode-team-id">
+      <input type="number" class="input-team-id" placeholder="Your FPL team/entry ID" />
+    </div>
+    <div class="squad-mode squad-mode-players hidden">
+      <textarea class="input-players" rows="3" placeholder="15 player names, comma-separated (e.g. Salah, Haaland, Gabriel, ...)"></textarea>
+      <input type="number" class="input-bank" placeholder="Bank (£m)" step="0.1" />
+    </div>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

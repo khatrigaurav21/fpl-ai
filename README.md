@@ -6,9 +6,21 @@ A points-maximizer for Fantasy Premier League — and a testbed for learning RAG
 
 Core loop is built and running on a daily schedule. Still in the validation window — nothing here should be trusted blindly until the 4-gameweek check described below actually runs its course.
 
+## Web app
+
+`server.py` (FastAPI) + `web/` (vanilla HTML/CSS/JS, no build step) is the primary interface — one app, one URL, every tool below as a tab: Captain Pick, Transfers, Team Optimizer, Price Tracker, Horizon Planner (clearly marked experimental in the UI itself, not just here), and the AI chat assistant.
+
+```bash
+uvicorn server:app --reload
+```
+
+Then open http://127.0.0.1:8000. Each tab is a thin wrapper over the same underlying modules described below — no logic was duplicated or reimplemented for the web app, so anything already true about a feature's validation status is still true here.
+
+The daily automated captain-pick/transfer-suggestion job stays a separate GitHub Actions workflow, since it runs unattended on a schedule — nothing to click there.
+
 ## What it does
 
-All free data — the unauthenticated FPL API only, no scraping, no paid feeds.
+All free data — the unauthenticated FPL API only, no scraping, no paid feeds. Every piece below is also usable standalone from the command line, if you don't want the web app.
 
 - **`main.py`** — expected points per player for the next gameweek (`form × fixture-difficulty × probability-of-playing`), a captaincy + vice pick, and a top-3-per-position breakdown. Logs every run to `predictions_log.csv` for accuracy tracking.
 - **`transfers.py`** — budget-aware transfer suggestions (up to 3), respecting your bank, the 3-per-club limit, and squad composition. Free transfers are auto-computed from your transfer history; hits are only suggested when a specific swap's own xP gain outweighs the -4.
