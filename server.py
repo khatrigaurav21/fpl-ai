@@ -1,4 +1,6 @@
+import base64
 import os
+import secrets
 import time
 
 from dotenv import load_dotenv
@@ -8,6 +10,8 @@ load_dotenv()
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from captaincy import pick_captain_vice, rank_candidates, top_by_position
 from chat import DEFAULT_MODEL, ask
@@ -19,7 +23,33 @@ from price_tracker import compute_momentum
 from team_optimizer import optimize_team
 from transfers import build_squad, compute_free_transfers, suggest_transfers
 
+class BasicAuthMiddleware(BaseHTTPMiddleware):
+    """Gates every request (API and static files) behind HTTP Basic Auth when
+    APP_PASSWORD is set. Username is ignored -- it's a single shared password,
+    not per-user accounts. If APP_PASSWORD isn't set (e.g. local dev), the
+    gate is skipped entirely so nothing changes for `uvicorn server:app`
+    without the env var."""
+
+    async def dispatch(self, request, call_next):
+        password = os.environ.get("APP_PASSWORD")
+        if not password:
+            return await call_next(request)
+
+        auth = request.headers.get("Authorization", "")
+        if auth.lower().startswith("basic "):
+            try:
+                decoded = base64.b64decode(auth[6:]).decode("utf-8")
+                _, _, provided = decoded.partition(":")
+                if secrets.compare_digest(provided, password):
+                    return await call_next(request)
+            except Exception:
+                pass
+
+        return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="FPL AI"'})
+
+
 app = FastAPI(title="FPL AI")
+app.add_middleware(BasicAuthMiddleware)
 
 CACHE_TTL = 300
 _gw_cache = {"data": None, "fixtures": None, "next_gw": None, "fetched_at": 0.0}

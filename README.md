@@ -18,6 +18,20 @@ Then open http://127.0.0.1:8000. Each tab is a thin wrapper over the same underl
 
 The daily automated captain-pick/transfer-suggestion job stays a separate GitHub Actions workflow, since it runs unattended on a schedule — nothing to click there.
 
+## Deployment
+
+The web app is deployable as-is (nothing to rewrite) to any host that can build from a GitHub repo and run a Python web service — e.g. Render, Railway, or Fly.io. Using Render as the concrete example:
+
+1. **render.com → New → Web Service → connect the `fpl-ai` GitHub repo.**
+2. Build command: `pip install -r requirements.txt`
+3. Start command: `uvicorn server:app --host 0.0.0.0 --port $PORT` (also in `Procfile`, which some platforms auto-detect)
+4. Environment variables (Render dashboard → Environment):
+   - `GEMINI_API_KEY` — same key as local dev
+   - `APP_PASSWORD` — gates the whole app behind HTTP Basic Auth (any username, this password) so a public URL can't be found and used by a stranger, burning your Gemini quota. Unset locally, the app runs gate-free; set it only on the public deployment.
+5. Deploy. Render auto-redeploys on every push to `master`.
+
+Render's free tier sleeps after 15 minutes idle (first request after that takes ~30s to wake back up) — fine for occasional personal use; upgrade to a paid tier if you want zero cold-start delay.
+
 ## What it does
 
 All free data — the unauthenticated FPL API only, no scraping, no paid feeds. Every piece below is also usable standalone from the command line, if you don't want the web app.
