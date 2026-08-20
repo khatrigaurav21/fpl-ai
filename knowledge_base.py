@@ -60,7 +60,16 @@ def build_summary_docs(by_position: dict, captain: dict, vice: dict, gw: int) ->
 
 def _video_keywords(title: str, channel: str) -> set[str]:
     words = set(re.findall(r"[a-z0-9]+", title.lower())) | set(re.findall(r"[a-z0-9]+", channel.lower()))
-    return {w for w in words if len(w) > 2}
+    words = {w for w in words if len(w) > 2}
+    # FPL creators mix "GW1" and "gameweek 1" interchangeably in titles.
+    # Without normalizing, a query using one form systematically buries every
+    # chunk from every video whose title happens to use the other -- found
+    # via a real query where an entire creator's 32 ingested chunks scored
+    # below another creator's, purely because "GW1" != "gameweek" as tokens.
+    if any(re.match(r"gw\d*$", w) for w in words) or "gameweek" in words:
+        words.add("gameweek")
+        words.add("gw")
+    return words
 
 
 def build_video_docs() -> list[dict]:
