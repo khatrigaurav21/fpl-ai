@@ -103,15 +103,25 @@ def get_recent_videos(uploads_playlist_id: str, api_key: str, max_results: int) 
     return videos
 
 
+class TranscriptTemporarilyUnavailable(Exception):
+    """Raised for anything that isn't a definitive "this video will never
+    have a transcript" (e.g. a livestream that hasn't started yet, a
+    transient network error). Callers should NOT mark the video as ingested
+    for this -- it should be retried on a future run."""
+
+
 def get_transcript_text(video_id: str) -> str | None:
+    """Returns the transcript text, or None if this video will never have
+    one (captions disabled / no transcript exists at all -- permanent, safe
+    to stop retrying). Raises TranscriptTemporarilyUnavailable for anything
+    else."""
     try:
         transcript = YouTubeTranscriptApi().fetch(video_id)
         return " ".join(seg.text for seg in transcript)
     except (TranscriptsDisabled, NoTranscriptFound):
         return None
     except Exception as e:
-        print(f"  Warning: transcript fetch failed for {video_id}: {e}")
-        return None
+        raise TranscriptTemporarilyUnavailable(str(e)) from e
 
 
 def chunk_text(text: str, chunk_words: int = CHUNK_WORDS, overlap_words: int = CHUNK_OVERLAP_WORDS) -> list[str]:
@@ -182,9 +192,14 @@ def ingest_all(api_key: str) -> int:
                 continue
 
             print(f"  New video: {video['title']}")
-            text = get_transcript_text(video["video_id"])
+            try:
+                text = get_transcript_text(video["video_id"])
+            except TranscriptTemporarilyUnavailable as e:
+                print(f"  Transcript not available yet ({e}); will retry on a future run.")
+                continue  # not logged as ingested -- deliberately retried next run
+
             if not text:
-                print("  No transcript available, skipping.")
+                print("  No transcript available (captions disabled), skipping permanently.")
                 log_ingested(video, channel["name"], 0)
                 continue
 
