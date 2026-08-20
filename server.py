@@ -14,7 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from captaincy import pick_captain_vice, rank_candidates, top_by_position
-from chat import DEFAULT_MODEL, ask
+from chat import DEFAULT_MODEL, ask, ask_consensus
 from fpl_client import build_player_pool, get_bootstrap_static, get_entry_history, get_entry_snapshot, get_fixtures, get_next_event
 from horizon_planner import UNLIMITED_STARTING_TRANSFERS, build_horizon_pools, optimize_horizon
 from knowledge_base import build_knowledge_base
@@ -227,13 +227,15 @@ def get_knowledge_base():
 
 class ChatInput(BaseModel):
     message: str
+    consensus: bool = False
 
 
 @app.post("/api/chat")
 def api_chat(inp: ChatInput):
     client = get_chat_client()
     docs, gw = get_knowledge_base()
-    answer = ask(inp.message, docs, gw, client, DEFAULT_MODEL)
+    ask_fn = ask_consensus if inp.consensus else ask
+    answer = ask_fn(inp.message, docs, gw, client, DEFAULT_MODEL)
     return {"answer": answer}
 
 

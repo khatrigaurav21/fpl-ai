@@ -124,8 +124,12 @@
       <section class="panel" id="panel-chat">
         <header class="panel-header">
           <h1>Ask AI</h1>
-          <p>Grounded only in this project's own computed data.</p>
+          <p>Grounded only in this project's own computed data and ingested YouTube creator transcripts.</p>
         </header>
+        <div class="squad-toggle" id="chat-mode-toggle">
+          <button class="toggle-btn active" data-mode="single">Quick Answer</button>
+          <button class="toggle-btn" data-mode="consensus">Compare Sources</button>
+        </div>
         <div class="chat-window" id="chat-window">
           <div class="chat-examples">
             <button class="chip">Who should I captain this week?</button>

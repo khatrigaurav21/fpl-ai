@@ -23,6 +23,9 @@ def _player_keywords(p: dict) -> set[str]:
     return words
 
 
+MODEL_SOURCE = "Our model"
+
+
 def build_player_docs(pool: list[dict]) -> list[dict]:
     docs = []
     for p in pool:
@@ -32,7 +35,7 @@ def build_player_docs(pool: list[dict]) -> list[dict]:
             f"Projected points next gameweek: {p['xp']:.2f}. "
             f"Probability of playing: {p['minutes_probability']:.0%}."
         )
-        docs.append({"id": f"player-{p['id']}", "keywords": _player_keywords(p), "text": text})
+        docs.append({"id": f"player-{p['id']}", "keywords": _player_keywords(p), "text": text, "source": MODEL_SOURCE})
     return docs
 
 
@@ -46,6 +49,7 @@ def build_summary_docs(by_position: dict, captain: dict, vice: dict, gw: int) ->
             "id": "top-picks",
             "keywords": {"top", "best", "pick", "picks", "recommend", "recommendation"},
             "text": f"Top picks by position for GW{gw} (by projected points):\n" + "\n".join(top_lines),
+            "source": MODEL_SOURCE,
         },
         {
             "id": "captain",
@@ -54,6 +58,7 @@ def build_summary_docs(by_position: dict, captain: dict, vice: dict, gw: int) ->
                 f"Recommended captain for GW{gw}: {captain['name']} (xP={captain['xp']:.2f}). "
                 f"Recommended vice-captain: {vice['name']} (xP={vice['xp']:.2f})."
             ),
+            "source": MODEL_SOURCE,
         },
     ]
 
@@ -83,7 +88,7 @@ def build_video_docs() -> list[dict]:
     for c in chunks:
         keywords = _video_keywords(c["title"], c["channel"])
         text = f"From {c['channel']}'s video \"{c['title']}\": {c['text']}"
-        docs.append({"id": c["id"], "keywords": keywords, "text": text})
+        docs.append({"id": c["id"], "keywords": keywords, "text": text, "source": c["channel"]})
     return docs
 
 
@@ -103,19 +108,20 @@ def build_knowledge_base() -> tuple[list[dict], int]:
     return docs, next_gw["id"]
 
 
+def _score(query_terms: set[str], doc: dict) -> int:
+    keyword_hits = len(query_terms & doc.get("keywords", set()))
+    text_hits = sum(1 for term in query_terms if len(term) > 2 and term in doc["text"].lower())
+    return keyword_hits * 2 + text_hits
+
+
 def retrieve(query: str, docs: list[dict], top_k: int = 8) -> list[dict]:
     """Keyword-overlap retrieval. Deliberately simple for v1 -- no embeddings,
     no vector store. Swapping this for semantic (embedding-based) retrieval is
     the natural next step once this baseline is proven useful."""
     query_terms = set(query.lower().replace("?", "").replace(",", "").split())
 
-    scored = []
-    for doc in docs:
-        keyword_hits = len(query_terms & doc.get("keywords", set()))
-        text_hits = sum(1 for term in query_terms if len(term) > 2 and term in doc["text"].lower())
-        score = keyword_hits * 2 + text_hits
-        if score > 0:
-            scored.append((score, doc))
+    scored = [(_score(query_terms, doc), doc) for doc in docs]
+    scored = [(s, d) for s, d in scored if s > 0]
     scored.sort(key=lambda x: x[0], reverse=True)
 
     always_include_ids = {"top-picks", "captain"}
@@ -130,4 +136,37 @@ def retrieve(query: str, docs: list[dict], top_k: int = 8) -> list[dict]:
             seen.add(doc["id"])
         if len(result) >= top_k:
             break
+    return result
+
+
+def retrieve_by_source(query: str, docs: list[dict], top_k_per_source: int = 2) -> dict[str, list[dict]]:
+    """Like retrieve(), but guarantees each source (our own model, plus each
+    individually-named YouTube creator) its own retrieval slot rather than
+    competing in one shared ranked list -- otherwise a source using different
+    vocabulary than the query can get crowded out entirely by another, the
+    exact bug found and fixed in retrieve() for a single-list ranking. A
+    source is omitted entirely if it has no positive-scoring match, rather
+    than forcing in irrelevant content."""
+    query_terms = set(query.lower().replace("?", "").replace(",", "").split())
+
+    by_source: dict[str, list[dict]] = {}
+    for doc in docs:
+        by_source.setdefault(doc.get("source", MODEL_SOURCE), []).append(doc)
+
+    result: dict[str, list[dict]] = {}
+    for source, source_docs in by_source.items():
+        scored = [(_score(query_terms, doc), doc) for doc in source_docs]
+        scored = [(s, d) for s, d in scored if s > 0]
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top = [doc for _, doc in scored[:top_k_per_source]]
+        if top:
+            result[source] = top
+
+    # The model's summary docs (top-picks, captain) are always relevant context
+    # for a consensus view, regardless of keyword score.
+    always_include = [doc for doc in docs if doc["id"] in {"top-picks", "captain"}]
+    if always_include:
+        other_model_docs = [d for d in result.get(MODEL_SOURCE, []) if d["id"] not in {"top-picks", "captain"}]
+        result[MODEL_SOURCE] = always_include + other_model_docs
+
     return result

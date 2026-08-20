@@ -375,6 +375,18 @@ function renderHorizon(el, data) {
 // ---------- Chat ----------
 const chatWindow = document.getElementById("chat-window");
 const chatInput = document.getElementById("chat-input");
+const chatModeToggle = document.getElementById("chat-mode-toggle");
+
+chatModeToggle.querySelectorAll(".toggle-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    chatModeToggle.querySelectorAll(".toggle-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+function isConsensusMode() {
+  return chatModeToggle.querySelector(".toggle-btn.active").dataset.mode === "consensus";
+}
 
 function appendChatMsg(text, role) {
   const examples = chatWindow.querySelector(".chat-examples");
@@ -400,11 +412,12 @@ function appendTypingIndicator() {
 
 async function sendChat(message) {
   if (!message.trim()) return;
-  appendChatMsg(message, "user");
+  const consensus = isConsensusMode();
+  appendChatMsg(consensus ? `${message} (comparing sources)` : message, "user");
   chatInput.value = "";
   const placeholder = appendTypingIndicator();
   try {
-    const data = await callApi("/chat", { message });
+    const data = await callApi("/chat", { message, consensus });
     placeholder.textContent = data.answer;
   } catch (err) {
     placeholder.textContent = `Error: ${err.message}`;
