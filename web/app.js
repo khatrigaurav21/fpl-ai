@@ -268,24 +268,14 @@ function renderPlanner(el, data) {
     .map((pos) => `<div class="pitch-row">${byPos[pos].map((p) => pitchChip(p, data)).join("")}</div>`)
     .join("");
 
-  const next = stagger();
-  const bench = data.bench
-    .map(
-      (p) => `
-    <div class="player-row" style="--i:${next()}">
-      <div><span class="player-name">${p.name}</span><span class="player-meta">${p.team} &middot; ${opponentTags(p)}</span></div>
-      <span class="xp-value">${fmtXp(p.xp)}</span>
-    </div>`
-    )
-    .join("");
+  const bench = data.bench.map((p) => pitchChip(p, data)).join("");
 
   el.innerHTML = `
-    <div class="pitch">${rows}</div>
-    <div class="card" style="--i:0">
-      <div class="card-title">Bench</div>
-      ${bench}
+    <div class="pitch">
+      ${rows}
+      <div class="pitch-row pitch-row-bench">${bench}</div>
     </div>
-    <div class="card card-highlight" style="--i:1">
+    <div class="card card-highlight" style="--i:0">
       <div class="player-row" style="--i:0"><div>Projected starting XI points</div><span class="big-stat" id="planner-total-value">0.00</span></div>
     </div>`;
 

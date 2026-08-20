@@ -937,6 +937,16 @@ textarea {
   z-index: 1;
 }
 
+/* Bench sits below the formation, off the field visually (border + reduced
+   opacity) rather than as a separate wide list -- keeps the same compact
+   chip reading as the starting XI instead of a jarring width mismatch. */
+.pitch-row-bench {
+  padding-top: 18px;
+  margin-top: 4px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.18);
+  opacity: 0.72;
+}
+
 .pitch-chip {
   background: rgba(6, 10, 8, 0.62);
   backdrop-filter: blur(8px);
