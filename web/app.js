@@ -133,8 +133,11 @@ function countUp(el, target, decimals = 2, duration = 700) {
 
 // Captain armband icon -- the one player this matters most for, marked with
 // something more specific than a generic "(C)" text suffix.
+// width/height are set directly on the <svg> (not just via CSS) so the icon
+// can't balloon to the browser's default SVG size if styles.css is slow to
+// load or briefly stale -- CSS still overrides these once it's applied.
 function captainBadge() {
-  return `<span class="captain-badge" title="Captain"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6l8-3 8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6z" fill="currentColor"/></svg></span>`;
+  return `<span class="captain-badge" title="Captain"><svg viewBox="0 0 24 24" width="11" height="11" fill="none"><path d="M4 6l8-3 8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6z" fill="currentColor"/></svg></span>`;
 }
 
 // ---------- Captain Pick ----------
