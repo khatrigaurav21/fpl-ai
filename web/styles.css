@@ -17,6 +17,14 @@
   --accent-amber: #f59e0b;
   --accent-red: #f87171;
 
+  /* Categorical position coding -- distinct from the semantic colors above
+     (positive/negative/warning) and from each other, used only as a thin
+     accent so it reads as helpful categorisation, not a palette change. */
+  --pos-gkp: #eab308;
+  --pos-def: #60a5fa;
+  --pos-mid: #34d399;
+  --pos-fwd: #fb7185;
+
   --radius: 16px;
   --radius-sm: 10px;
   --shadow-glow: 0 0 0 1px rgba(139, 92, 246, 0.15), 0 8px 30px rgba(139, 92, 246, 0.12);
@@ -595,10 +603,29 @@ textarea {
 
 .position-group {
   margin-bottom: 18px;
+  border-left: 2px solid transparent;
+  padding-left: 12px;
+  margin-left: -12px;
 }
 
 .position-group:last-child {
   margin-bottom: 0;
+}
+
+/* Categorical position coding: a real, distinct piece of information (which
+   position this is), not decoration -- distinguishes this from the removed
+   purely-ornamental dot that conveyed nothing. */
+.position-group[data-pos="GKP"] {
+  border-left-color: var(--pos-gkp);
+}
+.position-group[data-pos="DEF"] {
+  border-left-color: var(--pos-def);
+}
+.position-group[data-pos="MID"] {
+  border-left-color: var(--pos-mid);
+}
+.position-group[data-pos="FWD"] {
+  border-left-color: var(--pos-fwd);
 }
 
 .position-label {
@@ -614,6 +641,19 @@ textarea {
   margin-bottom: 8px;
 }
 
+.position-label[data-pos="GKP"] {
+  color: var(--pos-gkp);
+}
+.position-label[data-pos="DEF"] {
+  color: var(--pos-def);
+}
+.position-label[data-pos="MID"] {
+  color: var(--pos-mid);
+}
+.position-label[data-pos="FWD"] {
+  color: var(--pos-fwd);
+}
+
 .transfer-arrow {
   color: var(--text-muted);
   margin: 0 8px;
@@ -627,6 +667,47 @@ textarea {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Captain armband -- marks the one player this actually matters most for,
+   distinct from a generic "(C)" text suffix. Entrance is a quick pop, not a
+   loop, since it fires once when the captain is revealed, not continuously. */
+.captain-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  border-radius: 5px;
+  background: var(--accent-gradient);
+  color: #06070c;
+  vertical-align: middle;
+  animation: badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: 0.3s;
+}
+
+.captain-badge svg {
+  width: 11px;
+  height: 11px;
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .captain-badge {
+    animation: none;
+  }
 }
 
 .error-msg {

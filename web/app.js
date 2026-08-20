@@ -108,6 +108,35 @@ function stagger() {
   return () => i++;
 }
 
+const PREFERS_REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Counts a headline number up from 0 rather than having it just appear --
+// used sparingly, only on the single "hero number" per panel (the big-stat
+// elements), not on every row, so it stays a moment of feedback rather than
+// competing with the data itself for attention.
+function countUp(el, target, decimals = 2, duration = 700) {
+  if (PREFERS_REDUCED_MOTION) {
+    el.textContent = target.toFixed(decimals);
+    return;
+  }
+  const start = performance.now();
+  const ease = (t) => 1 - Math.pow(1 - t, 3); // ease-out cubic
+  function tick(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const value = target * ease(progress);
+    el.textContent = value.toFixed(decimals);
+    if (progress < 1) requestAnimationFrame(tick);
+    else el.textContent = target.toFixed(decimals);
+  }
+  requestAnimationFrame(tick);
+}
+
+// Captain armband icon -- the one player this matters most for, marked with
+// something more specific than a generic "(C)" text suffix.
+function captainBadge() {
+  return `<span class="captain-badge" title="Captain"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6l8-3 8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6z" fill="currentColor"/></svg></span>`;
+}
+
 // ---------- Captain Pick ----------
 document.getElementById("run-captain").addEventListener("click", async () => {
   const resultsEl = document.getElementById("results-captain");
@@ -132,8 +161,8 @@ function renderCaptain(el, data) {
   const positions = Object.entries(data.by_position)
     .map(
       ([pos, players]) => `
-      <div class="position-group">
-        <div class="position-label">${pos}</div>
+      <div class="position-group" data-pos="${pos}">
+        <div class="position-label" data-pos="${pos}">${pos}</div>
         ${players
           .map(
             (p) => `
@@ -150,13 +179,15 @@ function renderCaptain(el, data) {
   el.innerHTML = `
     <div class="card card-highlight" style="--i:${captainCardIndex}">
       <div class="card-title">Captain &middot; GW${data.gw}</div>
-      <div class="player-row" style="--i:0"><div><span class="player-name">${data.captain.name}</span><span class="player-meta">${data.captain.team}</span></div><span class="big-stat">${fmtXp(data.captain.xp)}</span></div>
+      <div class="player-row" style="--i:0"><div>${captainBadge()}<span class="player-name">${data.captain.name}</span><span class="player-meta">${data.captain.team}</span></div><span class="big-stat" id="captain-xp-value">0.00</span></div>
       <div class="player-row" style="--i:1"><div><span class="player-name">${data.vice.name}</span><span class="player-meta">Vice &middot; ${data.vice.team}</span></div><span class="xp-value">${fmtXp(data.vice.xp)}</span></div>
     </div>
     <div class="card" style="--i:1">
       <div class="card-title">Top Picks by Position</div>
       ${positions}
     </div>`;
+
+  countUp(document.getElementById("captain-xp-value"), data.captain.xp);
 }
 
 // ---------- Transfers ----------
@@ -238,13 +269,13 @@ function renderOptimizer(el, data) {
   const posBlocks = Object.entries(byPos)
     .map(
       ([pos, players]) => `
-    <div class="position-group">
-      <div class="position-label">${pos}</div>
+    <div class="position-group" data-pos="${pos}">
+      <div class="position-label" data-pos="${pos}">${pos}</div>
       ${players
         .map(
           (p) => `
         <div class="player-row" style="--i:${next()}">
-          <div><span class="player-name">${p.name}${p.id === data.captain.id ? " (C)" : ""}</span><span class="player-meta">${p.team} &middot; ${fmtMoney(p.now_cost)}</span></div>
+          <div>${p.id === data.captain.id ? captainBadge() : ""}<span class="player-name">${p.name}</span><span class="player-meta">${p.team} &middot; ${fmtMoney(p.now_cost)}</span></div>
           <span class="xp-value">${fmtXp(p.xp)}</span>
         </div>`
         )
@@ -374,8 +405,10 @@ function renderHorizon(el, data) {
     <div class="exp-banner">Experimental: compounds an xP model that hasn't been validated against a live result yet.</div>
     ${weeks}
     <div class="card card-highlight" style="--i:${next()}">
-      <div class="player-row" style="--i:0"><div>Total projected points (net of hits)</div><span class="big-stat">${data.total_points}</span></div>
+      <div class="player-row" style="--i:0"><div>Total projected points (net of hits)</div><span class="big-stat" id="horizon-total-value">0.00</span></div>
     </div>`;
+
+  countUp(document.getElementById("horizon-total-value"), data.total_points);
 }
 
 // ---------- Chat ----------
