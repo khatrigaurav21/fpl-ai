@@ -11,12 +11,18 @@ document.querySelectorAll(".nav-item").forEach((btn) => {
 });
 
 // ---------- GW indicator ----------
+// The dot reflects real state (see styles.css): gray while loading, green
+// only once the fetch has actually succeeded -- not a decorative pulse.
 fetch(`${API}/gw`)
   .then((r) => r.json())
   .then((d) => {
-    document.getElementById("gw-indicator").textContent = `GW${d.gw}`;
+    const el = document.getElementById("gw-indicator");
+    el.textContent = `GW${d.gw}`;
+    el.classList.add("is-ready");
   })
-  .catch(() => {});
+  .catch(() => {
+    document.getElementById("gw-indicator").textContent = "Offline";
+  });
 
 // ---------- Squad input widgets ----------
 const template = document.getElementById("squad-input-template");
@@ -175,7 +181,7 @@ document.getElementById("run-transfers").addEventListener("click", async () => {
 
 function renderTransfers(el, data) {
   if (!data.suggestions.length) {
-    el.innerHTML = `<div class="card" style="--i:0">No transfer is worth making this week &mdash; your squad's projected points beat the available upgrades.</div>`;
+    el.innerHTML = `<div class="card" style="--i:0">No transfer is worth making this week: your squad's projected points beat the available upgrades.</div>`;
     return;
   }
   const next = stagger();
@@ -196,7 +202,7 @@ function renderTransfers(el, data) {
 
   el.innerHTML = `
     <div class="card card-highlight" style="--i:0">
-      <div class="card-title">GW${data.gw} &middot; Bank ${fmtMoney(data.bank)} &middot; ${data.free_transfers} FT</div>
+      <div class="card-title">GW${data.gw} &middot; ${fmtMoney(data.bank)} bank, ${data.free_transfers} FT</div>
       ${rows}
     </div>
     <div class="card" style="--i:1">
@@ -259,7 +265,7 @@ function renderOptimizer(el, data) {
 
   el.innerHTML = `
     <div class="card card-highlight" style="--i:0">
-      <div class="card-title">GW${data.gw} &middot; ${fmtMoney(data.total_cost)} spent &middot; Projected ${data.starting_xp} pts</div>
+      <div class="card-title">GW${data.gw} &middot; ${fmtMoney(data.total_cost)} spent, ${data.starting_xp} pts projected</div>
       ${posBlocks}
     </div>
     <div class="card" style="--i:1">
@@ -365,7 +371,7 @@ function renderHorizon(el, data) {
     .join("");
 
   el.innerHTML = `
-    <div class="exp-banner">Experimental &mdash; compounds an xP model that hasn't been validated against a live result yet.</div>
+    <div class="exp-banner">Experimental: compounds an xP model that hasn't been validated against a live result yet.</div>
     ${weeks}
     <div class="card card-highlight" style="--i:${next()}">
       <div class="player-row" style="--i:0"><div>Total projected points (net of hits)</div><span class="big-stat">${data.total_points}</span></div>

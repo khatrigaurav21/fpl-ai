@@ -271,11 +271,18 @@ body::after {
   padding: 6px 12px;
 }
 
+/* Dot reflects real state, not decoration: gray/static while the gameweek
+   fetch is in flight, green/pulsing once it has actually succeeded. */
 .gw-chip::before {
   content: "";
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  background: var(--text-muted);
+  transition: background 0.25s ease;
+}
+
+.gw-chip.is-ready::before {
   background: var(--accent-lime);
   box-shadow: 0 0 8px rgba(163, 230, 53, 0.8);
   animation: pulse-dot 2s ease-in-out infinite;
@@ -394,6 +401,15 @@ input[type="text"]:focus,
 textarea:focus {
   border-color: var(--accent-violet);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+/* Explicit placeholder color -- browser defaults aren't guaranteed to clear
+   WCAG AA against this dark an input surface, and --text-muted was too close
+   to the edge on measurement, so this uses the lighter --text-secondary. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
 }
 
 textarea {
@@ -588,7 +604,6 @@ textarea {
 .position-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -597,14 +612,6 @@ textarea {
   padding: 4px 10px;
   border-radius: 6px;
   margin-bottom: 8px;
-}
-
-.position-label::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent-gradient);
 }
 
 .transfer-arrow {
