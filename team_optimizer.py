@@ -75,6 +75,50 @@ def optimize_team(pool: list[dict], budget: int = DEFAULT_BUDGET) -> dict:
     }
 
 
+def pick_best_xi(squad: list[dict]) -> dict:
+    """Given an already-fixed 15-man squad (this gameweek's xP already baked
+    into each player dict), picks the best valid starting XI + captain for
+    that gameweek. No budget/squad-selection constraints -- squad is fixed --
+    so this is a much smaller MILP than optimize_team, reused for the Team
+    Planner's per-gameweek view of an unchanged squad."""
+    by_id = {p["id"]: p for p in squad}
+
+    prob = pulp.LpProblem("fpl_best_xi", pulp.LpMaximize)
+    start_vars = {pid: pulp.LpVariable(f"start_{pid}", cat="Binary") for pid in by_id}
+    captain_vars = {pid: pulp.LpVariable(f"cap_{pid}", cat="Binary") for pid in by_id}
+
+    prob += pulp.lpSum(
+        by_id[pid]["xp"] * start_vars[pid] + by_id[pid]["xp"] * captain_vars[pid] for pid in by_id
+    )
+
+    prob += pulp.lpSum(start_vars.values()) == 11
+    for pos, (lo, hi) in FORMATION_LIMITS.items():
+        pos_starters = pulp.lpSum(start_vars[pid] for pid in by_id if by_id[pid]["position"] == pos)
+        prob += pos_starters >= lo
+        prob += pos_starters <= hi
+
+    for pid in by_id:
+        prob += captain_vars[pid] <= start_vars[pid]
+    prob += pulp.lpSum(captain_vars.values()) == 1
+
+    prob.solve(pulp.PULP_CBC_CMD(msg=False))
+    if pulp.LpStatus[prob.status] != "Optimal":
+        raise RuntimeError(f"pick_best_xi did not find an optimal solution (status: {pulp.LpStatus[prob.status]}).")
+
+    starters = [by_id[pid] for pid in by_id if start_vars[pid].value() == 1]
+    bench = [p for p in squad if p["id"] not in {s["id"] for s in starters}]
+    captain = next(by_id[pid] for pid in by_id if captain_vars[pid].value() == 1)
+    vice = max((p for p in starters if p["id"] != captain["id"]), key=lambda p: p["xp"])
+
+    return {
+        "starters": starters,
+        "bench": bench,
+        "captain": captain,
+        "vice": vice,
+        "total_points": round(sum(p["xp"] for p in starters) + captain["xp"], 2),
+    }
+
+
 def format_team(result: dict) -> str:
     lines = []
     for pos in ("GKP", "DEF", "MID", "FWD"):

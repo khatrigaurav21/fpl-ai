@@ -190,6 +190,105 @@ function renderCaptain(el, data) {
   countUp(document.getElementById("captain-xp-value"), data.captain.xp);
 }
 
+// ---------- Team Planner ----------
+// Fixed squad, no transfers: re-solves the best XI/captain for each
+// gameweek as fixtures change, one step at a time (mirrors livefpl.net's
+// planner). Transfer suggestions live in the separate Transfers/Horizon
+// panels -- this view never changes who's in the 15.
+let plannerOffset = 0;
+
+document.getElementById("run-planner").addEventListener("click", () => {
+  plannerOffset = 0;
+  loadPlanner();
+});
+document.getElementById("planner-prev").addEventListener("click", () => {
+  if (plannerOffset === 0) return;
+  plannerOffset--;
+  loadPlanner();
+});
+document.getElementById("planner-next").addEventListener("click", () => {
+  plannerOffset++;
+  loadPlanner();
+});
+
+async function loadPlanner() {
+  const resultsEl = document.getElementById("results-planner");
+  const stepper = document.getElementById("planner-stepper");
+  const runBtn = document.getElementById("run-planner");
+  const prevBtn = document.getElementById("planner-prev");
+  const nextBtn = document.getElementById("planner-next");
+  runBtn.disabled = true;
+  prevBtn.disabled = true;
+  nextBtn.disabled = true;
+  renderSkeleton(resultsEl, 1, 8);
+  try {
+    const squad = readSquadInput("planner");
+    const data = await callApi("/planner", { ...squad, week_offset: plannerOffset });
+    stepper.classList.remove("hidden");
+    document.getElementById("planner-gw-label").textContent = `GW${data.gw} · ${data.name}`;
+    renderPlanner(resultsEl, data);
+  } catch (err) {
+    stepper.classList.add("hidden");
+    showError(resultsEl, err);
+  } finally {
+    runBtn.disabled = false;
+    prevBtn.disabled = plannerOffset === 0;
+    nextBtn.disabled = false;
+  }
+}
+
+function opponentTags(p) {
+  if (!p.fixtures.length) return `<span class="pitch-chip-opp blank">Blank</span>`;
+  return p.fixtures
+    .map((f) => `<span class="pitch-chip-opp ${f.is_home ? "home" : "away"}">${f.opponent} ${f.is_home ? "(H)" : "(A)"}</span>`)
+    .join("");
+}
+
+function pitchChip(p, data) {
+  const isCaptain = p.id === data.captain.id;
+  const isVice = p.id === data.vice.id;
+  return `
+    <div class="pitch-chip">
+      <div class="pitch-chip-badge">${isCaptain ? captainBadge() : isVice ? `<span class="vice-badge" title="Vice-captain">V</span>` : ""}</div>
+      <div class="pitch-chip-name">${p.web_name}</div>
+      <div class="pitch-chip-opps">${opponentTags(p)}</div>
+      <div class="pitch-chip-xp">${fmtXp(p.xp)}</div>
+    </div>`;
+}
+
+function renderPlanner(el, data) {
+  const byPos = { GKP: [], DEF: [], MID: [], FWD: [] };
+  data.starters.forEach((p) => byPos[p.position].push(p));
+
+  const rows = ["GKP", "DEF", "MID", "FWD"]
+    .filter((pos) => byPos[pos].length)
+    .map((pos) => `<div class="pitch-row">${byPos[pos].map((p) => pitchChip(p, data)).join("")}</div>`)
+    .join("");
+
+  const next = stagger();
+  const bench = data.bench
+    .map(
+      (p) => `
+    <div class="player-row" style="--i:${next()}">
+      <div><span class="player-name">${p.name}</span><span class="player-meta">${p.team} &middot; ${opponentTags(p)}</span></div>
+      <span class="xp-value">${fmtXp(p.xp)}</span>
+    </div>`
+    )
+    .join("");
+
+  el.innerHTML = `
+    <div class="pitch">${rows}</div>
+    <div class="card" style="--i:0">
+      <div class="card-title">Bench</div>
+      ${bench}
+    </div>
+    <div class="card card-highlight" style="--i:1">
+      <div class="player-row" style="--i:0"><div>Projected starting XI points</div><span class="big-stat" id="planner-total-value">0.00</span></div>
+    </div>`;
+
+  countUp(document.getElementById("planner-total-value"), data.total_points);
+}
+
 // ---------- Transfers ----------
 document.getElementById("run-transfers").addEventListener("click", async () => {
   const resultsEl = document.getElementById("results-transfers");

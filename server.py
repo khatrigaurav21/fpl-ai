@@ -20,7 +20,7 @@ from horizon_planner import UNLIMITED_STARTING_TRANSFERS, build_horizon_pools, o
 from knowledge_base import build_knowledge_base
 from manual_squad import resolve_players
 from price_tracker import compute_momentum
-from team_optimizer import optimize_team
+from team_optimizer import optimize_team, pick_best_xi
 from transfers import build_squad, compute_free_transfers, suggest_transfers
 
 class BasicAuthMiddleware(BaseHTTPMiddleware):
@@ -203,6 +203,40 @@ def api_horizon(inp: HorizonInput):
 
     result = optimize_horizon(pools, gw_ids, initial_squad_ids, initial_bank, free_transfers)
     return result
+
+
+class PlannerInput(SquadInput):
+    week_offset: int = 0
+
+
+@app.post("/api/planner")
+def api_planner(inp: PlannerInput):
+    if not (0 <= inp.week_offset <= 8):
+        raise HTTPException(400, "week_offset must be between 0 and 8.")
+
+    data, fixtures, next_gw = get_gw_data()
+    squad, _ = resolve_squad(inp, data, fixtures)
+    if squad is None:
+        raise HTTPException(400, "A squad (team ID or player list) is required for the team planner.")
+    squad_ids = {p["id"] for p in squad}
+
+    target_gw_id = next_gw["id"] + inp.week_offset
+    target_gw = next((e for e in data["events"] if e["id"] == target_gw_id), None)
+    if target_gw is None:
+        raise HTTPException(400, "No gameweek that far ahead this season.")
+
+    gw_fixtures = get_fixtures(event=target_gw_id)
+    pool = build_player_pool(data, gw_fixtures, squad_ids)
+    if not pool:
+        raise HTTPException(400, "None of your squad's players were found for that gameweek.")
+
+    result = pick_best_xi(pool)
+    return {
+        "gw": target_gw["id"],
+        "name": target_gw["name"],
+        "deadline": target_gw["deadline_time"],
+        **result,
+    }
 
 
 def get_chat_client():

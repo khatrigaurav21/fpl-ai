@@ -389,6 +389,10 @@ body::after {
   display: none;
 }
 
+.hidden {
+  display: none;
+}
+
 input[type="number"],
 input[type="text"],
 textarea {
@@ -834,6 +838,196 @@ textarea {
   content: "⚠";
   flex-shrink: 0;
   font-size: 14px;
+}
+
+/* Team Planner */
+.gw-stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 20px 0 24px;
+}
+
+.stepper-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.stepper-btn:hover:not(:disabled) {
+  border-color: var(--accent-violet);
+  transform: translateY(-1px);
+}
+
+.stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepper-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.gw-stepper-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  min-width: 140px;
+  text-align: center;
+}
+
+/* CSS-drawn pitch -- simplified graphical view rather than photo-realistic
+   kit renders, per user preference: labeled chips over a green field,
+   grouped into formation rows (GKP/DEF/MID/FWD), same data as every other
+   panel's player-row just laid out spatially. */
+.pitch {
+  background: radial-gradient(ellipse at center, #1e7a45 0%, #14512e 75%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 20px;
+  min-height: 480px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pitch::before,
+.pitch::after {
+  content: "";
+  position: absolute;
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+}
+
+.pitch::before {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  transform: translateX(-50%);
+}
+
+.pitch::after {
+  left: 50%;
+  top: 50%;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.pitch-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.pitch-chip {
+  background: rgba(6, 10, 8, 0.62);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 8px 10px 7px;
+  min-width: 94px;
+  text-align: center;
+  color: #f4f6f2;
+  animation: rise-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.pitch-chip-badge {
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pitch-chip-badge .captain-badge {
+  margin-right: 0;
+  animation: none;
+}
+
+.vice-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #f4f6f2;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.pitch-chip-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+  margin: 2px auto 0;
+}
+
+.pitch-chip-opps {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 3px;
+}
+
+.pitch-chip-opp {
+  font-size: 10px;
+  color: rgba(244, 246, 242, 0.72);
+}
+
+.pitch-chip-opp.blank {
+  color: rgba(244, 246, 242, 0.45);
+  font-style: italic;
+}
+
+.pitch-chip-xp {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-lime);
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pitch-chip {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .pitch {
+    padding: 20px 8px;
+    gap: 14px;
+  }
+  .pitch-chip {
+    min-width: 78px;
+    padding: 6px 6px 5px;
+  }
+  .pitch-chip-name {
+    max-width: 78px;
+    font-size: 11px;
+  }
 }
 
 /* Chat */

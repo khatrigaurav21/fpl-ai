@@ -63,9 +63,22 @@ def get_entry_snapshot(team_id: int, events: list[dict]) -> dict | None:
     return None
 
 
+def get_team_fixtures(team_id: int, gw_fixtures: list[dict], short_names: dict[int, str]) -> list[dict]:
+    """Opponent(s) for a team in one gameweek, as a list to handle double
+    gameweeks -- empty list means a blank gameweek for that team."""
+    result = []
+    for f in gw_fixtures:
+        if f["team_h"] == team_id:
+            result.append({"opponent": short_names[f["team_a"]], "is_home": True})
+        elif f["team_a"] == team_id:
+            result.append({"opponent": short_names[f["team_h"]], "is_home": False})
+    return result
+
+
 def build_player_pool(data: dict, gw_fixtures: list[dict], squad_ids: set[int] | None = None) -> list[dict]:
     elements = data["elements"]
     teams = {t["id"]: t["name"] for t in data["teams"]}
+    short_names = {t["id"]: t["short_name"] for t in data["teams"]}
     positions = {p["id"]: p["singular_name_short"] for p in data["element_types"]}
 
     pool = []
@@ -84,6 +97,7 @@ def build_player_pool(data: dict, gw_fixtures: list[dict], squad_ids: set[int] |
                 "now_cost": p["now_cost"],
                 "xp": round(expected_points(p, gw_fixtures), 2),
                 "minutes_probability": minutes_probability(p),
+                "fixtures": get_team_fixtures(p["team"], gw_fixtures, short_names),
             }
         )
     return pool

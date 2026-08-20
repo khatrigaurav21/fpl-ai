@@ -8,7 +8,7 @@ Core loop is built and running on a daily schedule. Still in the validation wind
 
 ## Web app
 
-`server.py` (FastAPI) + `web/` (vanilla HTML/CSS/JS, no build step) is the primary interface — one app, one URL, every tool below as a tab: Captain Pick, Transfers, Team Optimizer, Price Tracker, Horizon Planner (clearly marked experimental in the UI itself, not just here), and the AI chat assistant.
+`server.py` (FastAPI) + `web/` (vanilla HTML/CSS/JS, no build step) is the primary interface — one app, one URL, every tool below as a tab: Captain Pick, Team Planner, Transfers, Team Optimizer, Price Tracker, Horizon Planner (clearly marked experimental in the UI itself, not just here), and the AI chat assistant.
 
 ```bash
 uvicorn server:app --reload
@@ -38,7 +38,8 @@ All free data — the unauthenticated FPL API only, no scraping, no paid feeds. 
 
 - **`main.py`** — expected points per player for the next gameweek (`form × fixture-difficulty × probability-of-playing`), a captaincy + vice pick, and a top-3-per-position breakdown. Logs every run to `predictions_log.csv` for accuracy tracking.
 - **`transfers.py`** — budget-aware transfer suggestions (up to 3), respecting your bank, the 3-per-club limit, and squad composition. Free transfers are auto-computed from your transfer history; hits are only suggested when a specific swap's own xP gain outweighs the -4.
-- **`team_optimizer.py`** — the single best possible 15-man squad under a budget, solved exactly via MILP (PuLP/CBC), including the optimal captain choice as part of the objective, not picked after the fact.
+- **`team_optimizer.py`** — the single best possible 15-man squad under a budget, solved exactly via MILP (PuLP/CBC), including the optimal captain choice as part of the objective, not picked after the fact. Also exposes `pick_best_xi()`, a smaller fixed-squad variant of the same solver reused by the Team Planner below.
+- **Team Planner** (web app only, `/api/planner`) — your existing 15-man squad shown as a pitch, one gameweek at a time: best starting XI, captain/vice, and each player's opponent, re-solved per gameweek as fixtures change. Deliberately fixed-squad — it never proposes transfers, since that's what Transfers/Horizon Planner already do; step through gameweeks with the Previous/Next control to see how the *same* squad's optimal lineup shifts.
 - **`price_tracker.py`** — heuristic price-change momentum (net transfers scaled by ownership), since FPL's real algorithm is undisclosed.
 - **`chat.py`** / **`chat_ui.py`** — a small RAG assistant: ask natural-language questions and get answers grounded in this project's own computed data (not general football knowledge). Keyword-based retrieval for now; real embeddings are the natural next step. Uses Gemini (free tier) — requires your own `GEMINI_API_KEY` from aistudio.google.com/apikey. `chat.py` is the CLI; `chat_ui.py` runs the same thing as a real chat interface in your browser (Gradio). **Consensus mode** (`--consensus` on the CLI, "Compare Sources" toggle in the web app) guarantees a slot for our own model *and* each individually-named YouTube creator, then asks the model to summarize each source's view separately and state an explicit agree/disagree verdict — rather than one shared ranked list where a popular or differently-worded source can crowd out another.
 - **GitHub Actions** (`.github/workflows/captain-pick.yml`) — runs the captain pick and transfer suggester daily, only acting within 36 hours of a deadline, pushing results to your phone via ntfy.
@@ -77,7 +78,7 @@ Fill in `actual_captain_points` in `predictions_log.csv` after each gameweek —
 
 ## Roadmap
 
-Built: captaincy engine, transfer-hit calculator, squad optimizer, price tracker, RAG chat assistant, daily automation, multi-GW horizon planner (experimental), YouTube creator transcript ingestion.
+Built: captaincy engine, transfer-hit calculator, squad optimizer, price tracker, RAG chat assistant, daily automation, multi-GW horizon planner (experimental), YouTube creator transcript ingestion, team planner (fixed-squad, per-gameweek pitch view).
 
 The horizon planner was originally deferred for a specific reason — front-loading a multi-week optimizer before the underlying weekly forecast is validated risks compounding an unproven model's errors across time — and was built anyway as a deliberate technical exercise, clearly labeled as unvalidated rather than pretending the underlying risk went away. The plan is to keep it experimental until the 4-gameweek validation check below actually gives the single-week model a track record to build on.
 
