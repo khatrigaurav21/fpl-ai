@@ -14,7 +14,6 @@ jobs:
     env:
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
       FPL_TEAM_ID: ${{ secrets.FPL_TEAM_ID }}
-      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,16 +35,12 @@ jobs:
         if: ${{ env.FPL_TEAM_ID != '' }}
         run: python transfers.py --team-id "$FPL_TEAM_ID" --notify --deadline-window-hours 36
 
-      - name: Ingest new YouTube videos
-        if: ${{ env.YOUTUBE_API_KEY != '' }}
-        run: python youtube_source.py
-
       - name: Commit updated logs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          for f in predictions_log.csv transfer_suggestions_log.csv video_knowledge.json video_sources_log.csv youtube_channels_cache.json; do
+          for f in predictions_log.csv transfer_suggestions_log.csv; do
             [ -f "$f" ] && git add "$f"
           done
-          git diff --cached --quiet || git commit -m "Log GW prediction, transfer suggestions, and new video transcripts"
+          git diff --cached --quiet || git commit -m "Log GW prediction and transfer suggestions"
           git diff --cached --quiet || git push
