@@ -1,5 +1,11 @@
+import json
+import re
+from pathlib import Path
+
 from captaincy import pick_captain_vice, rank_candidates, top_by_position
 from fpl_client import build_player_pool, get_bootstrap_static, get_fixtures, get_next_event
+
+VIDEO_KNOWLEDGE_PATH = Path("video_knowledge.json")
 
 
 POSITION_SYNONYMS = {
@@ -52,6 +58,26 @@ def build_summary_docs(by_position: dict, captain: dict, vice: dict, gw: int) ->
     ]
 
 
+def _video_keywords(title: str, channel: str) -> set[str]:
+    words = set(re.findall(r"[a-z0-9]+", title.lower())) | set(re.findall(r"[a-z0-9]+", channel.lower()))
+    return {w for w in words if len(w) > 2}
+
+
+def build_video_docs() -> list[dict]:
+    """Loads transcript chunks ingested by youtube_source.py, if any. Each
+    chunk becomes its own retrievable doc so chat can surface just the
+    relevant part of a video, not the whole transcript at once."""
+    if not VIDEO_KNOWLEDGE_PATH.exists():
+        return []
+    chunks = json.loads(VIDEO_KNOWLEDGE_PATH.read_text(encoding="utf-8"))
+    docs = []
+    for c in chunks:
+        keywords = _video_keywords(c["title"], c["channel"])
+        text = f"From {c['channel']}'s video \"{c['title']}\": {c['text']}"
+        docs.append({"id": c["id"], "keywords": keywords, "text": text})
+    return docs
+
+
 def build_knowledge_base() -> tuple[list[dict], int]:
     data = get_bootstrap_static()
     next_gw = get_next_event(data["events"])
@@ -64,6 +90,7 @@ def build_knowledge_base() -> tuple[list[dict], int]:
 
     docs = build_player_docs(pool)
     docs += build_summary_docs(by_position, captain, vice, next_gw["id"])
+    docs += build_video_docs()
     return docs, next_gw["id"]
 
 

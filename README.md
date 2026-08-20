@@ -42,6 +42,7 @@ All free data — the unauthenticated FPL API only, no scraping, no paid feeds. 
 - **`price_tracker.py`** — heuristic price-change momentum (net transfers scaled by ownership), since FPL's real algorithm is undisclosed.
 - **`chat.py`** / **`chat_ui.py`** — a small RAG assistant: ask natural-language questions and get answers grounded in this project's own computed data (not general football knowledge). Keyword-based retrieval for now; real embeddings are the natural next step. Uses Gemini (free tier) — requires your own `GEMINI_API_KEY` from aistudio.google.com/apikey. `chat.py` is the CLI; `chat_ui.py` runs the same thing as a real chat interface in your browser (Gradio).
 - **GitHub Actions** (`.github/workflows/captain-pick.yml`) — runs the captain pick and transfer suggester daily, only acting within 36 hours of a deadline, pushing results to your phone via ntfy.
+- **`youtube_source.py`** — checks configured FPL YouTube creators (FPL Harry, FPL Raptor, FPL Mate, Let's Talk FPL) daily for new uploads, fetches the transcript (free, no login), chunks it, and feeds it into the same knowledge base the chat assistant reads from — so you can ask "what does X think about Y" grounded in what they actually said. Requires your own `YOUTUBE_API_KEY` (free, Google Cloud Console). Dedupes per-video via `video_sources_log.csv`; caches resolved channel IDs in `youtube_channels_cache.json` so the (quota-limited) channel-lookup call only happens once per channel.
 - **`horizon_planner.py`** — ⚠️ **EXPERIMENTAL, unvalidated.** A real joint multi-period MILP: squad/transfer/captain decisions across a 3-5 week horizon simultaneously, with free-transfer banking (capped at 5, resets correctly after a hit week) and a heuristic confidence-decay on further-out weeks. The MILP formulation itself is rigorously tested (isolated unit tests on the free-transfer linearization, full constraint verification against live data). What's *not* validated is the thing it's built on: the single-gameweek xP model has never been checked against a real result. This compounds that unvalidated model across weeks on purpose, as a technical exercise — not a plan to actually follow yet. See the module docstring before using it for real decisions.
 
 ## Setup
@@ -64,6 +65,7 @@ python price_tracker.py                           # price-change momentum
 python chat.py "who should I captain this week"   # ask anything (CLI)
 python chat_ui.py                                 # same thing, in a browser chat UI
 python horizon_planner.py --horizon 3             # EXPERIMENTAL multi-week plan, not validated
+python youtube_source.py                          # check configured channels for new uploads
 ```
 
 Your team ID is the number in the URL when you view your team on the FPL site (`.../entry/<id>/...`).
@@ -74,7 +76,7 @@ Fill in `actual_captain_points` in `predictions_log.csv` after each gameweek —
 
 ## Roadmap
 
-Built: captaincy engine, transfer-hit calculator, squad optimizer, price tracker, RAG chat assistant, daily automation, multi-GW horizon planner (experimental).
+Built: captaincy engine, transfer-hit calculator, squad optimizer, price tracker, RAG chat assistant, daily automation, multi-GW horizon planner (experimental), YouTube creator transcript ingestion.
 
 The horizon planner was originally deferred for a specific reason — front-loading a multi-week optimizer before the underlying weekly forecast is validated risks compounding an unproven model's errors across time — and was built anyway as a deliberate technical exercise, clearly labeled as unvalidated rather than pretending the underlying risk went away. The plan is to keep it experimental until the 4-gameweek validation check below actually gives the single-week model a track record to build on.
 
