@@ -23,12 +23,15 @@ from price_tracker import compute_momentum
 from team_optimizer import optimize_team, pick_best_xi
 from transfers import build_squad, compute_free_transfers, suggest_transfers
 
+APP_USERNAME = "khatri"
+
+
 class BasicAuthMiddleware(BaseHTTPMiddleware):
     """Gates every request (API and static files) behind HTTP Basic Auth when
-    APP_PASSWORD is set. Username is ignored -- it's a single shared password,
-    not per-user accounts. If APP_PASSWORD isn't set (e.g. local dev), the
-    gate is skipped entirely so nothing changes for `uvicorn server:app`
-    without the env var."""
+    APP_PASSWORD is set. Username must be APP_USERNAME -- not a secret, just a
+    fixed identifier, so it lives in code rather than an env var. If
+    APP_PASSWORD isn't set (e.g. local dev), the gate is skipped entirely so
+    nothing changes for `uvicorn server:app` without the env var."""
 
     async def dispatch(self, request, call_next):
         password = os.environ.get("APP_PASSWORD")
@@ -39,8 +42,8 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         if auth.lower().startswith("basic "):
             try:
                 decoded = base64.b64decode(auth[6:]).decode("utf-8")
-                _, _, provided = decoded.partition(":")
-                if secrets.compare_digest(provided, password):
+                username, _, provided = decoded.partition(":")
+                if secrets.compare_digest(username, APP_USERNAME) and secrets.compare_digest(provided, password):
                     return await call_next(request)
             except Exception:
                 pass
