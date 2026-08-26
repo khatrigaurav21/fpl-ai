@@ -70,10 +70,14 @@ def log_suggestions(gw: int, suggestions: list[dict]) -> bool:
 
 
 def build_squad(pool_by_id: dict[int, dict], picks: list[dict]) -> list[dict]:
+    """selling_price isn't present on FPL's public picks endpoint (only the
+    authenticated my-team endpoint has it) -- approximated as now_cost, same
+    as manual_squad.py, since real sell price only diverges after price
+    rises."""
     squad = []
     for pick in picks:
         player = dict(pool_by_id[pick["element"]])
-        player["selling_price"] = pick["selling_price"]
+        player["selling_price"] = pick.get("selling_price", player["now_cost"])
         squad.append(player)
     return squad
 
